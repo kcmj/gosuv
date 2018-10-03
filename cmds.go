@@ -43,11 +43,11 @@ func actionStartServer(c *cli.Context) error {
 		log.Fatal(err)
 	}
 
-	if c.Bool("foreground") {
+	//if c.Bool("foreground") {
 		if err = newDistributed(suv, hdlr); err != nil {
 			log.Fatal(err)
 		}
-	}
+	//}
 
 	auth := cfg.Server.HttpAuth
 	if auth.Enabled {

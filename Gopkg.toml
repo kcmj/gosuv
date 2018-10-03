@@ -1,0 +1,110 @@
+# Gopkg.toml example
+#
+# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# for detailed Gopkg.toml documentation.
+#
+# required = ["github.com/user/thing/cmd/thing"]
+# ignored = ["github.com/user/project/pkgX", "bitbucket.org/user/project/pkgA/pkgY"]
+#
+# [[constraint]]
+#   name = "github.com/user/project"
+#   version = "1.0.0"
+#
+# [[constraint]]
+#   name = "github.com/user/project2"
+#   branch = "dev"
+#   source = "github.com/myfork/project2"
+#
+# [[override]]
+#   name = "github.com/x/y"
+#   version = "2.4.0"
+#
+# [prune]
+#   non-go = false
+#   go-tests = true
+#   unused-packages = true
+
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/axgle/pinyin"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/bluele/gcache"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/glycerine/rbuf"
+
+[[constraint]]
+  name = "github.com/go-yaml/yaml"
+  version = "2.2.1"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/goji/httpauth"
+
+[[constraint]]
+  name = "github.com/gorilla/mux"
+  version = "1.6.2"
+
+[[constraint]]
+  name = "github.com/gorilla/websocket"
+  version = "1.4.0"
+
+[[constraint]]
+  name = "github.com/imroc/req"
+  version = "0.2.1"
+
+[[constraint]]
+  name = "github.com/kennygrant/sanitize"
+  version = "1.2.4"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/lunny/dingtalk_webhook"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/mitchellh/go-ps"
+
+[[constraint]]
+  name = "github.com/natefinch/lumberjack"
+  version = "2.1.0"
+
+[[constraint]]
+  name = "github.com/qiniu/log"
+  version = "1.0.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/shurcooL/vfsgen"
+
+[[constraint]]
+  name = "github.com/smartystreets/goconvey"
+  version = "1.6.3"
+
+[[constraint]]
+  name = "github.com/soopsio/gosuv"
+  version = "0.1.1"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/soopsio/kexec"
+
+[[constraint]]
+  name = "github.com/urfave/cli"
+  version = "1.20.0"
+
+[[constraint]]
+  name = "github.com/cihub/seelog"
+  branch = "master"
+
+[[constraint]]
+  name = "github.com/facebookgo/atomicfile"
+  branch = "master"
+
+[prune]
+  go-tests = true
+  unused-packages = true
