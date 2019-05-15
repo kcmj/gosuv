@@ -14,7 +14,7 @@
 <body id="app">
 
 <script>
-    window.isGroupIndex = false;
+    window.isGroupIndex = true;
 </script>
 
 <nav class="navbar navbar-inverse">
@@ -60,71 +60,24 @@
     </div>
     -->
     <div class="col-md-12">
-        <div class="panel panel-default">
+        <div v-for="(group,items) in groups" class="panel panel-default">
             <div class="panel-heading">
-                Master
+                {{group}}
                 <span class="panel-icon pull-right">
-                    <button class="btn btn-success btn-sm" rel="tooltip"  v-on:click="addNewProgram()" data-original-title="Click to add programs"><i class="fa fa-plus"></i>New Program</button>
-                </span>
-            </div>
-            <div class="panel-body">
-                <table class="table table-hover table-bordered">
-                    <thead>
-                    <tr>
-                        <td>Name</td>
-                        <td>Status</td>
-                        <td>View</td>
-                        <td>Command</td>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr v-for="p in programs">
-                        <td v-text="p.program.name"></td>
-                        <td v-html="p.status | colorStatus"></td>
-                        <td>
-                            <button class="btn btn-default btn-xs" v-on:click="cmdTail(p.program.name)">
-                                <span class="fa fa-file-text-o"></span> Log
-                            </button>
-                            <a href="/settings/{{p.program.name}}" class="btn btn-default btn-xs">
-                                <span class="fa fa-bar-chart"></span> Profiles
-                            </a>
-                            <button class="btn btn-default btn-xs" data-toggle="tooltip" title="{{p.program.command}}">
-                                <span class="glyphicon glyphicon-info-sign"></span> Info
-                            </button>
-                        </td>
-                        <td>
-                            <button v-on:click="cmdStart(p.program.name)" class="btn btn-default btn-xs"
-                                    :disabled='["running", "stopping"].indexOf(p.status) != -1'>
-                                <span class="glyphicon glyphicon-play"></span> Start
-                            </button>
-                            <button class="btn btn-default btn-xs" v-on:click="cmdStop(p.program.name)"
-                                    :disabled="!canStop(p.status)">
-                                <span class="glyphicon glyphicon-stop"></span> Stop
-                            </button>
-                            <button class="btn btn-default btn-xs" v-on:click="cmdRestart(p.program.name)"
-                                    :disabled="!canStop(p.status)">
-                                <span class="glyphicon glyphicon-stop"></span> Restart
-                            </button>
-                            <button v-on:click="showEditProgram(p.program)" class="btn btn-default btn-xs">
-                                <span class="glyphicon glyphicon-edit"></span> Edit
-                            </button>
-                            <button class="btn btn-default btn-xs" v-on:click="cmdDelete(p.program.name)">
-                                <span class="color-red glyphicon glyphicon-trash"></span> Delete
-                            </button>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <div v-for="(slave,items) in slaves" class="panel panel-default">
-            <div class="panel-heading">
-                {{slave}}
-                <span class="panel-icon pull-right">
-                    <button class="btn btn-success btn-sm" rel="tooltip"  v-on:click="addNewProgram(slave)"
-                            data-original-title="Click to add programs">
-                        <i class="fa fa-plus"></i>New Program
-                    </button>
+                <button class="btn btn-success btn-sm" rel="tooltip"  v-on:click="cmdStartGroup(group)"
+                        data-original-title="Click to StartGroup">
+                    <i class="fa fa-plus"></i>StartGroup
+                </button>
+
+                <button class="btn btn-success btn-sm" rel="tooltip"  v-on:click="cmdStopGroup(group)"
+                        data-original-title="Click to StopGroup">
+                    <i class="fa fa-plus"></i>StopGroup
+                </button>
+
+                <button class="btn btn-success btn-sm" rel="tooltip"  v-on:click="cmdReStartGroup(group)"
+                        data-original-title="Click to ReStartGroup">
+                    <i class="fa fa-plus"></i>ReStartGroup
+                </button>
                 </span>
             </div>
             <div class="panel-body">
@@ -142,33 +95,42 @@
                         <td v-text="p.program.name"></td>
                         <td v-html="p.status | colorStatus"></td>
                         <td>
-                            <button class="btn btn-default btn-xs" v-on:click="cmdTail(p.program.name,slave)">
+                            <button class="btn btn-default btn-xs" v-on:click="cmdTail(p.program.name,p.program.slave)">
                                 <span class="fa fa-file-text-o"></span> Log
                             </button>
-                            <a href="/distributed/{{slave}}/settings/{{p.program.name}}" class="btn btn-default btn-xs">
-                                <span class="fa fa-bar-chart"></span> Profiles
-                            </a>
+
+                            <template v-if="p.program.slave && p.program.slave != ''">
+                                <a href="/distributed/{{p.program.slave}}/settings/{{p.program.name}}" class="btn btn-default btn-xs">
+                                    <span class="fa fa-bar-chart"></span> Profiles
+                                </a>
+                            </template>
+                            <template v-else>
+                                <a href="/settings/{{p.program.name}}" class="btn btn-default btn-xs">
+                                    <span class="fa fa-bar-chart"></span> Profiles
+                                </a>
+                            </template>
+
                             <button class="btn btn-default btn-xs" data-toggle="tooltip" title="{{p.program.command}}">
                                 <span class="glyphicon glyphicon-info-sign"></span> Info
                             </button>
                         </td>
                         <td>
-                            <button v-on:click="cmdStart(p.program.name,slave)" class="btn btn-default btn-xs"
+                            <button v-on:click="cmdStart(p.program.name,p.program.slave)" class="btn btn-default btn-xs"
                                     :disabled='["running", "stopping"].indexOf(p.status) != -1'>
                                 <span class="glyphicon glyphicon-play"></span> Start
                             </button>
-                            <button class="btn btn-default btn-xs" v-on:click="cmdStop(p.program.name,slave)"
+                            <button class="btn btn-default btn-xs" v-on:click="cmdStop(p.program.name,p.program.slave)"
                                     :disabled="!canStop(p.status)">
                                 <span class="glyphicon glyphicon-stop"></span> Stop
                             </button>
-                            <button class="btn btn-default btn-xs" v-on:click="cmdRestart(p.program.name,slave)"
+                            <button class="btn btn-default btn-xs" v-on:click="cmdRestart(p.program.name,p.program.slave)"
                                     :disabled="!canStop(p.status)">
                                 <span class="glyphicon glyphicon-stop"></span> Restart
                             </button>
-                            <button v-on:click="showEditProgram(p.program,slave)" class="btn btn-default btn-xs">
+                            <button v-on:click="showEditProgram(p.program,p.program.slave)" class="btn btn-default btn-xs">
                                 <span class="glyphicon glyphicon-edit"></span> Edit
                             </button>
-                            <button class="btn btn-default btn-xs" v-on:click="cmdDelete(p.program.name,slave)">
+                            <button class="btn btn-default btn-xs" v-on:click="cmdDelete(p.program.name,p.program.slave)">
                                 <span class="color-red glyphicon glyphicon-trash"></span> Delete
                             </button>
                         </td>
@@ -178,6 +140,7 @@
             </div>
         </div>
     </div>
+
     <div class="col-md-12">
         <div id="footer" class="pull-right" style="margin: 2em 1em">
             <div>
@@ -186,7 +149,7 @@
             </div>
             <div>
                 <a href="https://github.com/ihaiker/distributed-gosuv">distributed-gosuv ([[.Version]])</a>, written by
-                <a href="https://github.com/ihaiker">haiker</a>. 2017. go1.8
+                <a href="https://github.com/ihaiker">haiker, kcmj</a>. 2017. go1.8
             </div>
         </div>
     </div>
@@ -220,10 +183,6 @@
                         <div class="form-group">
                             <label>User</label>
                             <input type="text" name="user" class="form-control" placeholder="user, optional">
-                        </div>
-                        <div class="form-group">
-                            <label>Group</label>
-                            <input type="text" name="group" class="form-control" placeholder="group, optional">
                         </div>
                         <div class="form-group">
                             <label>Fail Retries</label>

@@ -11,6 +11,7 @@ var vm = new Vue({
         },
         programs: [],
         slaves: [],
+        groups: [],
         edit: {
             program: null,
         }
@@ -110,6 +111,10 @@ var vm = new Vue({
             return this.breadcrumb;
         },
         refresh: function () {
+            if (window.isGroupIndex) {
+                vm.groupRefresh();
+                return;
+            }
             // ws.send("Hello")
             $.ajax({
                 url: "/api/programs",
@@ -128,6 +133,62 @@ var vm = new Vue({
                     Vue.nextTick(function () {
                         $('[data-toggle="tooltip"]').tooltip()
                     })
+                }
+            });
+        },
+        groupRefresh: function () {
+            var masterOk = false;
+            var slaveOk = false;
+            var masterPrograms = [];
+            var slavePrograms = {};
+            var group2programs = {};
+
+            var _refresh = function () {
+                masterPrograms.forEach(function (pg) {
+                    var programs = group2programs[pg.program.group];
+                    if (!programs) {
+                        programs = [];
+                        group2programs[pg.program.group] = programs;
+                    }
+                    programs.push(pg);
+                });
+
+                Object.keys(slavePrograms).forEach(function(_slave){
+                    var pg = slavePrograms[_slave];
+                    pg.program.slave = vm.getSlave(_slave);
+                    var programs = group2programs[pg.program.group];
+                    if (!programs) {
+                        programs = [];
+                        group2programs[pg.program.group] = programs;
+                    }
+                    programs.push(pg);
+                });
+
+                vm.groups = group2programs;
+                Vue.nextTick(function () {
+                    $('[data-toggle="tooltip"]').tooltip()
+                })
+            }
+
+            $.ajax({
+                url: "/api/programs",
+                success: function (data) {
+                    masterPrograms = data;
+                    masterOk = true;
+                    if (masterOk && slaveOk) {
+                        _refresh();
+                    }
+                }
+            });
+
+            $.ajax({
+                url: "/distributed/api/programs",
+                success: function (data) {
+                    slavePrograms = data;
+                    slaveOk = true;
+                    if (masterOk && slaveOk) {
+                        _refresh();
+                    }
                 }
             });
         },
@@ -240,6 +301,36 @@ var vm = new Vue({
                     console.log(data);
                 }
             })
+        },
+        cmdStartGroup: function (group) {
+            requestUrl = "/api/groups/" + group + "/start";
+            $.ajax({
+                url: requestUrl,
+                method: 'post',
+                success: function (data) {
+                    console.log(data);
+                }
+            });
+        },
+        cmdStopGroup: function (group) {
+            requestUrl = "/api/groups/" + group + "/stop";
+            $.ajax({
+                url: requestUrl,
+                method: 'post',
+                success: function (data) {
+                    console.log(data);
+                }
+            });
+        },
+        cmdReStartGroup: function (group) {
+            requestUrl = "/api/groups/" + group + "/restart";
+            $.ajax({
+                url: requestUrl,
+                method: 'post',
+                success: function (data) {
+                    console.log(data);
+                }
+            });
         },
         canStop: function (status) {
             switch (status) {

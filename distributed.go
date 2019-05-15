@@ -163,7 +163,7 @@ func (cluster *Cluster) cmdQueryDistributedPrograms(w http.ResponseWriter, r *ht
 	jsonOut := "{"
 	idx := 0
 	for _, slave := range slaves {
-		reqUrl := fmt.Sprintf("http://%s/api/programs", slave)
+		reqUrl := fmt.Sprintf("http://%s/api/programs?slave=%s", slave, slave)
 		if body, err := cluster.requestSlave(reqUrl, http.MethodGet, nil); err == nil {
 			name, _ := cluster.slaves.Get(slave)
 			jsonOut += fmt.Sprintf("\"%s|%s\":%s", name, slave, body)
@@ -180,6 +180,8 @@ func (cluster *Cluster) cmdQueryDistributedPrograms(w http.ResponseWriter, r *ht
 func (cluster *Cluster) cmdSetting(w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
 	slave := mux.Vars(r)["slave"]
+	slaveName, _ := cluster.slaves.Get(slave)
+	slave = fmt.Sprintf("%s|%s", slaveName, slave)
 	cluster.suv.renderHTML(w, "setting", map[string]string{
 		"Name":  name,
 		"Slave": slave,
@@ -238,8 +240,7 @@ func (cluster *Cluster) cmdWebSocketProxy(w http.ResponseWriter, r *http.Request
 	}
 }
 
-func (cluster *Cluster) slaveHttpProxy(w http.ResponseWriter, r *http.Request) {
-	slave := mux.Vars(r)["slave"]
+func (cluster *Cluster) doSlaveHttpProxy(slave string, w http.ResponseWriter, r *http.Request) (*http.Response, error) {
 	slaveUri := strings.Replace(r.RequestURI, "/distributed/"+slave, "", 1)
 	requestUrl := fmt.Sprintf("http://%s%s", slave, slaveUri)
 	log.Infof("proxy :%s %s", r.Method, requestUrl)
@@ -256,6 +257,16 @@ func (cluster *Cluster) slaveHttpProxy(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Error(err)
 	}
+	return resp, err
+}
+
+func (cluster *Cluster) slaveHttpProxy(w http.ResponseWriter, r *http.Request) {
+	slave := mux.Vars(r)["slave"]
+	resp, err := cluster.doSlaveHttpProxy(slave, w, r)
+	if err != nil {
+		return
+	}
+
 	defer resp.Body.Close()
 
 	if body, err := ioutil.ReadAll(resp.Body); err != nil {
@@ -266,7 +277,7 @@ func (cluster *Cluster) slaveHttpProxy(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set(k, strings.Join(v, ","))
 		}
 		w.Write(body)
-		cluster.suv.broadcastEvent("execute ok : " + slaveUri)
+		cluster.suv.broadcastEvent("execute ok : " + r.RequestURI)
 	}
 }
 

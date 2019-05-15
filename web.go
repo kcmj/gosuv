@@ -42,6 +42,7 @@ type Supervisor struct {
 
 	names   []string // order of programs
 	pgMap   map[string]Program
+	group2Programs map[string][]Program
 	procMap map[string]*Process
 	mu      sync.Mutex
 	eventB  *WriteBroadcaster
@@ -58,7 +59,7 @@ func (s *Supervisor) programs() []Program {
 func (s *Supervisor) procs() []*Process {
 	ps := make([]*Process, 0, len(s.names))
 	for _, name := range s.names {
-		ps = append(ps, s.procMap[name])
+		ps = append(ps,  s.procMap[name])
 	}
 	return ps
 }
@@ -138,6 +139,15 @@ func (s *Supervisor) addOrUpdateProgram(pg Program) error {
 			newProc := s.newProcess(pg)
 			s.procMap[pg.Name] = newProc
 			s.pgMap[pg.Name] = pg // update origin
+			pgs := s.group2Programs[pg.Group]
+			for i, oldPg := range pgs {
+				if oldPg.Name == pg.Name {
+					pgs[i] = pg
+					s.group2Programs[pg.Group] = pgs
+					break
+				}
+			}
+
 			if isRunning {
 				newProc.Operate(StartEvent)
 			}
@@ -147,6 +157,8 @@ func (s *Supervisor) addOrUpdateProgram(pg Program) error {
 		s.names = append(s.names, pg.Name)
 		s.pgMap[pg.Name] = pg
 		s.procMap[pg.Name] = s.newProcess(pg)
+		pgs := s.group2Programs[pg.Group]
+		s.group2Programs[pg.Group] = append(pgs, pg)
 		s.broadcastEvent(pg.Name + " added")
 	}
 	return nil
@@ -195,7 +207,7 @@ func (s *Supervisor) loadDB() error {
 		if visited[pg.Name] {
 			continue
 		}
-		s.removeProgram(pg.Name)
+		s.removeProgram(pg.Name, pg.Group)
 		// name := pg.Name
 		// log.Printf("stop before delete program: %s", name)
 		// s.stopAndWait(name)
@@ -216,7 +228,7 @@ func (s *Supervisor) saveDB() error {
 	return ioutil.WriteFile(s.programPath(), data, 0644)
 }
 
-func (s *Supervisor) removeProgram(name string) {
+func (s *Supervisor) removeProgram(name, group string) {
 	names := make([]string, 0, len(s.names))
 	for _, pName := range s.names {
 		if pName == name {
@@ -229,6 +241,13 @@ func (s *Supervisor) removeProgram(name string) {
 	s.stopAndWait(name)
 	delete(s.procMap, name)
 	delete(s.pgMap, name)
+	pgs := s.group2Programs[group]
+	for i, pg := range pgs {
+		if pg.Name == group {
+			s.group2Programs[group] = append(pgs[:i], pgs[i+1:]...)
+			break
+		}
+	}
 	s.broadcastEvent(name + " deleted")
 }
 
@@ -271,6 +290,10 @@ func (s *Supervisor) renderJSON(w http.ResponseWriter, data JSONResponse) {
 
 func (s *Supervisor) hIndex(w http.ResponseWriter, r *http.Request) {
 	s.renderHTML(w, "index", nil)
+}
+
+func (s *Supervisor) hGroupsIndex(w http.ResponseWriter, r *http.Request) {
+	s.renderHTML(w, "group_index", nil)
 }
 
 func (s *Supervisor) hSetting(w http.ResponseWriter, r *http.Request) {
@@ -357,6 +380,7 @@ func (s *Supervisor) hAddProgram(w http.ResponseWriter, r *http.Request) {
 		User:         r.FormValue("user"),
 		StartAuto:    r.FormValue("autostart") == "on",
 		StartRetries: retries,
+		Group: r.FormValue("group"),
 		// TODO: missing other values
 	}
 	if pg.Dir == "" {
@@ -421,13 +445,13 @@ func (s *Supervisor) hDelProgram(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	var data []byte
-	if _, ok := s.pgMap[name]; !ok {
+	if pg, ok := s.pgMap[name]; !ok {
 		data, _ = json.Marshal(map[string]interface{}{
 			"status": 1,
 			"error":  fmt.Sprintf("Program %s not exists", strconv.Quote(name)),
 		})
 	} else {
-		s.removeProgram(name)
+		s.removeProgram(name, pg.Group)
 		s.saveDB()
 		data, _ = json.Marshal(map[string]interface{}{
 			"status": 0,
@@ -491,6 +515,52 @@ func (s *Supervisor) hRestartProgram(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	w.Write(data)
+}
+
+func (s *Supervisor) groupOperateEvent(group, api string, w http.ResponseWriter, r *http.Request, event FSMEvent)  {
+	for _, pg := range s.group2Programs[group] {
+		proc, ok := s.procMap[pg.Name]
+		if !ok {
+			continue
+		}
+		go func() {
+			CatchPanic(func() {
+				proc.Operate(event)
+			})
+		}()
+	}
+
+	keys := cluster.slaves.Keys()
+	for _, k := range keys {
+		slave, ok := k.(string)
+		if !ok {
+			continue
+		}
+
+		cluster.doSlaveHttpProxy(slave, w, r)
+	}
+
+	data, _ := json.Marshal(map[string]interface{}{
+		"status": 0,
+		"group":   group,
+		"api": api,
+	})
+	w.Write(data)
+}
+
+func (s *Supervisor) hStartGroup(w http.ResponseWriter, r *http.Request) {
+	group := mux.Vars(r)["group"]
+	s.groupOperateEvent(group, "start", w, r, StartEvent)
+}
+
+func (s *Supervisor) hStopGroup(w http.ResponseWriter, r *http.Request) {
+	group := mux.Vars(r)["group"]
+	s.groupOperateEvent(group, "stop", w, r, StopEvent)
+}
+
+func (s *Supervisor) hReStartGroup(w http.ResponseWriter, r *http.Request) {
+	group := mux.Vars(r)["group"]
+	s.groupOperateEvent(group, "restart", w, r, RestartEvent)
 }
 
 func (s *Supervisor) hWebhook(w http.ResponseWriter, r *http.Request) {
@@ -669,6 +739,7 @@ func newSupervisorHandler() (suv *Supervisor, hdlr http.Handler, err error) {
 	suv = &Supervisor{
 		ConfigDir: filepath.Join(defaultGosuvDir, "conf"),
 		pgMap:     make(map[string]Program, 0),
+		group2Programs: make(map[string][]Program, 0),
 		procMap:   make(map[string]*Process, 0),
 		eventB:    NewWriteBroadcaster(4 * 1024),
 	}
@@ -679,6 +750,7 @@ func newSupervisorHandler() (suv *Supervisor, hdlr http.Handler, err error) {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", suv.hIndex)
+	r.HandleFunc("/groups", suv.hGroupsIndex)
 	r.HandleFunc("/settings/{name}", suv.hSetting)
 
 	r.HandleFunc("/api/status", suv.hStatus)
@@ -693,6 +765,9 @@ func newSupervisorHandler() (suv *Supervisor, hdlr http.Handler, err error) {
 	r.HandleFunc("/api/programs/{name}/start", suv.hStartProgram).Methods("POST")
 	r.HandleFunc("/api/programs/{name}/stop", suv.hStopProgram).Methods("POST")
 	r.HandleFunc("/api/programs/{name}/restart", suv.hRestartProgram).Methods("POST")
+	r.HandleFunc("/api/groups/{group}/start", suv.hStartGroup).Methods("POST")
+	r.HandleFunc("/api/groups/{group}/stop", suv.hStopGroup).Methods("POST")
+	r.HandleFunc("/api/groups/{group}/restart", suv.hReStartGroup).Methods("POST")
 
 	r.HandleFunc("/ws/events", suv.wsEvents)
 	r.HandleFunc("/ws/logs/{name}", suv.wsLog)

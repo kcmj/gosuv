@@ -73,18 +73,19 @@ func (f *FSM) SetState(newState FSMState) {
 	f.state = newState
 }
 
-func (f *FSM) Operate(event FSMEvent) FSMState {
+func (f *FSM) Operate(event FSMEvent) bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
 	eventMap := f.handlers[f.State()]
 	if eventMap == nil {
-		return f.State()
+		return false
 	}
 	if fn, ok := eventMap[event]; ok {
 		fn()
+		return true
 	}
-	return f.State()
+	return false
 }
 
 func NewFSM(initState FSMState) *FSM {
@@ -121,6 +122,7 @@ type Program struct {
 	User          string        `yaml:"user,omitempty" json:"user"`
 	Notifications Notifications `yaml:"notifications,omitempty" json:"-"`
 	WebHook       WebHook       `yaml:"webhook,omitempty" json:"-"`
+	Group string `yaml:"group,omitempty" json:"group"`
 }
 
 type Notifications struct {
@@ -443,9 +445,15 @@ func NewProcess(pg Program) *Process {
 		}
 	}).AddHandler(Running, RestartEvent, func() {
 		go func() {
-			pr.Operate(StopEvent)
-			time.Sleep(100 * time.Millisecond)
-			pr.Operate(StartEvent)
+			CatchPanic(func() {
+
+				if !pr.Operate(StopEvent) {
+					return
+				}
+				time.Sleep(100 * time.Millisecond)
+				pr.Operate(StartEvent)
+
+			})
 		}()
 	})
 	return pr
