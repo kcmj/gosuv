@@ -160,7 +160,7 @@ func (cluster *Cluster) cmdQueryDistributedPrograms(w http.ResponseWriter, r *ht
 		reqUrl := fmt.Sprintf("http://%s/api/programs", slave)
 		if body, err := cluster.requestSlave(reqUrl, http.MethodGet, nil); err == nil {
 			name, _ := cluster.slaves.Get(slave)
-			jsonOut += fmt.Sprintf("\"%s|%s\":%s", slave, name, body)
+			jsonOut += fmt.Sprintf("\"%s|%s\":%s", name, slave, body)
 		}
 		if idx < cluster.slaves.Len()-1 {
 			jsonOut += ","
