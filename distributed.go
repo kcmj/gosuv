@@ -99,6 +99,38 @@ func (cluster *Cluster) cmdJoinCluster(w http.ResponseWriter, r *http.Request) {
 	}
 	cluster.slaves.Set(slave, slave)
 	w.WriteHeader(http.StatusOK)
+
+	go func() {
+		for {
+			CatchPanic(func() {
+
+				wsUrl := fmt.Sprintf("ws://%s%s", slave, "/ws/events")
+				ws, _, err := cluster.dialWebSocket(wsUrl)
+				if err != nil {
+					log.Error("dial:", err)
+					return
+				}
+				defer ws.Close()
+
+				for {
+					messageType, data, err := ws.ReadMessage()
+					if err != nil {
+						log.Error("read message:", err)
+						return
+					}
+					if messageType == websocket.CloseMessage {
+						log.Infof("close socket")
+						return
+					}
+
+					cluster.suv.broadcastEvent(slave + " " + string(data))
+				}
+
+			})
+
+			time.Sleep(time.Second)
+		}
+	}()
 }
 
 //获取分布式系统下所有的内容

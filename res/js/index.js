@@ -160,7 +160,7 @@ var vm = new Vue({
             })
         },
         cmdRestart: function (name, slave) {
-            requestUrl = "/api/programs/" + name + "/estart";
+            requestUrl = "/api/programs/" + name + "/restart";
             if (slave !== undefined && "" !== slave) {
                 requestUrl = "/distributed/" + slave + requestUrl;
             }

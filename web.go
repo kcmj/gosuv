@@ -71,8 +71,8 @@ func (s *Supervisor) newProcess(pg Program) *Process {
 	p := NewProcess(pg)
 	origFunc := p.StateChange
 	p.StateChange = func(oldState, newState FSMState) {
-		s.broadcastEvent(fmt.Sprintf("%s state: %s -> %s", p.Name, string(oldState), string(newState)))
 		origFunc(oldState, newState)
+		s.broadcastEvent(fmt.Sprintf("%s state: %s -> %s", p.Name, string(oldState), string(newState)))
 	}
 	return p
 }

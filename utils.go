@@ -113,3 +113,15 @@ func StringFormat(format string, m map[string]interface{}) string {
 	}
 	return format
 }
+
+func CatchPanic(f func()) (err interface{}) {
+	defer func() {
+		err = recover()
+		if err != nil {
+			log.Errorf("%s panic: %s", f, err)
+		}
+	}()
+
+	f()
+	return
+}
