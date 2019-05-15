@@ -138,6 +138,12 @@ func (cluster *Cluster) cmdJoinCluster(w http.ResponseWriter, r *http.Request) {
 
 			})
 
+			if out, err := cluster.slaves.Get(slave); err != nil || out == nil {
+
+			} else {
+				return
+			}
+
 			time.Sleep(time.Second)
 		}
 	}()
@@ -283,10 +289,8 @@ func newDistributed(suv *Supervisor, hdlr http.Handler) error {
 
 	if cfg.Server.Master != "" {
 		go func() {
-			time.Sleep(time.Second)
-			cluster.join()
 			for {
-				time.Sleep(10 * time.Second)
+				time.Sleep(time.Second)
 				cluster.join()
 			}
 		}()
