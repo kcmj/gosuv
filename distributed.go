@@ -94,11 +94,17 @@ func (cluster *Cluster) cmdJoinCluster(w http.ResponseWriter, r *http.Request) {
 		slave = r.RemoteAddr[:idx] + slave
 	}
 	log.Debugf("%s join cluster.", slave)
+	var isNewSlave bool
 	if out, err := cluster.slaves.Get(slave); err != nil || out == nil {
+		isNewSlave = true
 		cluster.suv.broadcastEvent("new slave : " + slave)
 	}
 	cluster.slaves.Set(slave, slave)
 	w.WriteHeader(http.StatusOK)
+
+	if !isNewSlave {
+		return
+	}
 
 	go func() {
 		for {
@@ -272,13 +278,11 @@ func newDistributed(suv *Supervisor, hdlr http.Handler) error {
 
 	if cfg.Server.Master != "" {
 		go func() {
-			t1 := time.NewTimer(time.Second)
+			time.Sleep(time.Second)
+			cluster.join()
 			for {
-				select {
-				case <-t1.C:
-					cluster.join()
-					t1.Reset(time.Second)
-				}
+				time.Sleep(10 * time.Second)
+				cluster.join()
 			}
 		}()
 	}
