@@ -96,6 +96,10 @@
                                     :disabled="!canStop(p.status)">
                                 <span class="glyphicon glyphicon-stop"></span> Stop
                             </button>
+                            <button class="btn btn-default btn-xs" v-on:click="cmdRestart(p.program.name)"
+                                    :disabled="!canStop(p.status)">
+                                <span class="glyphicon glyphicon-stop"></span> Restart
+                            </button>
                             <button v-on:click="showEditProgram(p.program)" class="btn btn-default btn-xs">
                                 <span class="glyphicon glyphicon-edit"></span> Edit
                             </button>
@@ -151,6 +155,10 @@
                             <button class="btn btn-default btn-xs" v-on:click="cmdStop(p.program.name,slave)"
                                     :disabled="!canStop(p.status)">
                                 <span class="glyphicon glyphicon-stop"></span> Stop
+                            </button>
+                            <button class="btn btn-default btn-xs" v-on:click="cmdRestart(p.program.name,slave)"
+                                    :disabled="!canStop(p.status)">
+                                <span class="glyphicon glyphicon-stop"></span> Restart
                             </button>
                             <button v-on:click="showEditProgram(p.program,slave)" class="btn btn-default btn-xs">
                                 <span class="glyphicon glyphicon-edit"></span> Edit

@@ -167,6 +167,8 @@ func (cluster *Cluster) cmdWebSocketProxy(w http.ResponseWriter, r *http.Request
 			log.Infof("close socket")
 			return
 		}
+
+		/*
 		w, err := sock.NextWriter(messageType)
 		if err != nil {
 			log.Error("write err:", err)
@@ -175,6 +177,13 @@ func (cluster *Cluster) cmdWebSocketProxy(w http.ResponseWriter, r *http.Request
 		_, err = w.Write(data)
 		if err != nil {
 			log.Error("read:", err)
+			return
+		}
+		*/
+
+		err = sock.WriteMessage(messageType, data)
+		if err != nil {
+			log.Error("write err:", err)
 			return
 		}
 	}
@@ -222,6 +231,7 @@ func newDistributed(suv *Supervisor, hdlr http.Handler) error {
 	for _, path := range []string{
 		"/distributed/{slave}/api/programs", "/distributed/{slave}/api/programs/{name}",
 		"/distributed/{slave}/api/programs/{name}/start", "/distributed/{slave}/api/programs/{name}/stop",
+		"/distributed/{slave}/api/programs/{name}/restart",
 	} {
 		r.HandleFunc(path, cluster.slaveHttpProxy)
 	}

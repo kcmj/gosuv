@@ -159,6 +159,19 @@ var vm = new Vue({
                 }
             })
         },
+        cmdRestart: function (name, slave) {
+            requestUrl = "/api/programs/" + name + "/estart";
+            if (slave !== undefined && "" !== slave) {
+                requestUrl = "/distributed/" + slave + requestUrl;
+            }
+            $.ajax({
+                url: requestUrl,
+                method: 'post',
+                success: function (data) {
+                    console.log(data);
+                }
+            })
+        },
         cmdTail: function (name, slave) {
             requestUrl = "/ws/logs/" + name;
             if (slave !== undefined && "" !== slave) {

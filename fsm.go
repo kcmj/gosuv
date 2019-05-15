@@ -326,7 +326,7 @@ func (p *Process) stopCommand() {
 		select {
 		case <-stopch: // TODO(ssx): add it to config
 			log.Println(p.Name, "停止完成")
-		case <-time.After(10 * time.Second):
+		case <-time.After(30 * time.Second):
 			log.Println(p.Name, "停止超时，强制 kill")
 			p.cmd.Process.Signal(syscall.SIGKILL)
 		}
@@ -427,7 +427,7 @@ func NewProcess(pg Program) *Process {
 		pr.StartSeconds = 3
 	}
 	if pr.StopTimeout <= 0 {
-		pr.StopTimeout = 3
+		pr.StopTimeout = 30
 	}
 
 	pr.AddHandler(Stopped, StartEvent, func() {
@@ -439,13 +439,12 @@ func NewProcess(pg Program) *Process {
 	pr.AddHandler(Running, StopEvent, func() {
 		select {
 		case pr.stopC <- syscall.SIGTERM:
-		case <-time.After(200 * time.Millisecond):
+		case <-time.After(30 * time.Second):
 		}
 	}).AddHandler(Running, RestartEvent, func() {
 		go func() {
 			pr.Operate(StopEvent)
-			// TODO: start laterly
-			time.Sleep(1 * time.Second)
+			time.Sleep(100 * time.Millisecond)
 			pr.Operate(StartEvent)
 		}()
 	})
