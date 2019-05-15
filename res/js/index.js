@@ -154,14 +154,16 @@ var vm = new Vue({
                 });
 
                 Object.keys(slavePrograms).forEach(function(_slave){
-                    var pg = slavePrograms[_slave];
-                    pg.program.slave = vm.getSlave(_slave);
-                    var programs = group2programs[pg.program.group];
-                    if (!programs) {
-                        programs = [];
-                        group2programs[pg.program.group] = programs;
-                    }
-                    programs.push(pg);
+                    var pgs = slavePrograms[_slave];
+                    pgs.forEach(function (pg) {
+                        pg.program.slave = vm.getSlave(_slave);
+                        var programs = group2programs[pg.program.group];
+                        if (!programs) {
+                            programs = [];
+                            group2programs[pg.program.group] = programs;
+                        }
+                        programs.push(pg);
+                    })
                 });
 
                 vm.groups = group2programs;
