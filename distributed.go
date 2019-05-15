@@ -28,7 +28,7 @@ type Cluster struct {
 }
 
 func (cluster *Cluster) join() {
-	data := url.Values{"slave": []string{cfg.Server.Addr}}
+	data := url.Values{"slave": []string{cfg.Server.Addr}, "name":[]string{cfg.Server.Name}}
 	request, err := http.NewRequest(http.MethodPost, "http://"+cfg.Server.Master+"/distributed/join", strings.NewReader(data.Encode()))
 	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
@@ -85,9 +85,13 @@ func (cluster *Cluster) requestSlave(url, method string, bodyBuffer *bytes.Buffe
 
 func (cluster *Cluster) cmdJoinCluster(w http.ResponseWriter, r *http.Request) {
 	slave := r.PostFormValue("slave")
+	name := r.PostFormValue("name")
 	if slave == "" {
 		w.WriteHeader(http.StatusForbidden)
 		return
+	}
+	if name == "" {
+		name = slave
 	}
 	if strings.HasPrefix(slave, ":") {
 		idx := strings.LastIndex(r.RemoteAddr, ":")
@@ -99,7 +103,7 @@ func (cluster *Cluster) cmdJoinCluster(w http.ResponseWriter, r *http.Request) {
 		isNewSlave = true
 		cluster.suv.broadcastEvent("new slave : " + slave)
 	}
-	cluster.slaves.Set(slave, slave)
+	cluster.slaves.Set(slave, name)
 	w.WriteHeader(http.StatusOK)
 
 	if !isNewSlave {
@@ -144,8 +148,8 @@ func (cluster *Cluster) cmdQueryDistributedPrograms(w http.ResponseWriter, r *ht
 
 	w.Header().Set("Content-Type", "application/json")
 	slaves := []string{}
-	for _, v := range cluster.slaves.GetALL() {
-		if slave, ok := v.(string); ok {
+	for _, k := range cluster.slaves.Keys() {
+		if slave, ok := k.(string); ok {
 			slaves = append(slaves, slave)
 		}
 	}
@@ -155,7 +159,8 @@ func (cluster *Cluster) cmdQueryDistributedPrograms(w http.ResponseWriter, r *ht
 	for _, slave := range slaves {
 		reqUrl := fmt.Sprintf("http://%s/api/programs", slave)
 		if body, err := cluster.requestSlave(reqUrl, http.MethodGet, nil); err == nil {
-			jsonOut += fmt.Sprintf("\"%s\":%s", slave, body)
+			name, _ := cluster.slaves.Get(slave)
+			jsonOut += fmt.Sprintf("\"%s|%s\":%s", slave, name, body)
 		}
 		if idx < cluster.slaves.Len()-1 {
 			jsonOut += ","

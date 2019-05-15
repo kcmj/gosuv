@@ -16,11 +16,23 @@ var vm = new Vue({
         }
     },
     methods: {
+        getSlave: function (slaveAndName) {
+            if (!slaveAndName || slaveAndName == "") {
+                return slaveAndName;
+            }
+            var info = slaveAndName.split("|");
+            if (info.length > 1) {
+                return info[1];
+            } else {
+                return slaveAndName;
+            }
+        },
+
         addNewProgram: function (slave) {
             $("#newProgram").modal({
                 show: true,
                 backdrop: 'static',
-            }).data("slave", slave);
+            }).data("slave", vm.getSlave(slave));
         },
         formNewProgram: function () {
             var url = "/api/programs",
@@ -36,6 +48,7 @@ var vm = new Vue({
                 return false
             }
             var slave = $("#newProgram").data("slave");
+            slave = vm.getSlave(slave);
             if (slave !== undefined && slave !== "") {
                 url = "/distributed/" + slave + url;
             }
@@ -57,6 +70,7 @@ var vm = new Vue({
         },
 
         showEditProgram: function (p, slave) {
+            slave = vm.getSlave(slave);
             this.edit.program = Object.assign({}, p); // here require polyfill.min.js
             $("#programEdit").data("slave",slave).modal('show');
         },
@@ -65,6 +79,7 @@ var vm = new Vue({
             var p = this.edit.program;
             var requestUrl = "/api/programs/" + p.name
             var slave = $("#programEdit").data("slave");
+            slave = vm.getSlave(slave);
             if (slave !== undefined && slave !== "") {
                 requestUrl = "/distributed/" + slave + requestUrl;
             }
@@ -133,6 +148,7 @@ var vm = new Vue({
             console.log("test");
         },*/
         cmdStart: function (name, slave) {
+            slave = vm.getSlave(slave);
             console.log(name, slave);
             requestUrl = "/api/programs/" + name + "/start";
             if (slave !== undefined && "" !== slave) {
@@ -147,6 +163,7 @@ var vm = new Vue({
             });
         },
         cmdStop: function (name, slave) {
+            slave = vm.getSlave(slave);
             requestUrl = "/api/programs/" + name + "/stop";
             if (slave !== undefined && "" !== slave) {
                 requestUrl = "/distributed/" + slave + requestUrl;
@@ -160,6 +177,7 @@ var vm = new Vue({
             })
         },
         cmdRestart: function (name, slave) {
+            slave = vm.getSlave(slave);
             requestUrl = "/api/programs/" + name + "/restart";
             if (slave !== undefined && "" !== slave) {
                 requestUrl = "/distributed/" + slave + requestUrl;
@@ -173,6 +191,7 @@ var vm = new Vue({
             })
         },
         cmdTail: function (name, slave) {
+            slave = vm.getSlave(slave);
             requestUrl = "/ws/logs/" + name;
             if (slave !== undefined && "" !== slave) {
                 requestUrl = "/distributed/" + slave + requestUrl;
@@ -210,6 +229,7 @@ var vm = new Vue({
                 return
             }
             requestUrl = "/api/programs/" + name;
+            slave = vm.getSlave(slave);
             if (slave !== undefined && "" !== slave) {
                 requestUrl = "/distributed/" + slave + requestUrl
             }
