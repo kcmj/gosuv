@@ -75,16 +75,20 @@ func (f *FSM) SetState(newState FSMState) {
 
 func (f *FSM) Operate(event FSMEvent) bool {
 	f.mu.Lock()
-	defer f.mu.Unlock()
 
 	eventMap := f.handlers[f.State()]
 	if eventMap == nil {
+		f.mu.Unlock()
 		return false
 	}
+
 	if fn, ok := eventMap[event]; ok {
+		f.mu.Unlock()
 		fn()
 		return true
 	}
+
+	f.mu.Unlock()
 	return false
 }
 
@@ -444,17 +448,11 @@ func NewProcess(pg Program) *Process {
 		case <-time.After(30 * time.Second):
 		}
 	}).AddHandler(Running, RestartEvent, func() {
-		go func() {
-			CatchPanic(func() {
-
-				if !pr.Operate(StopEvent) {
-					return
-				}
-				time.Sleep(100 * time.Millisecond)
-				pr.Operate(StartEvent)
-
-			})
-		}()
+		if !pr.Operate(StopEvent) {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+		pr.Operate(StartEvent)
 	})
 	return pr
 }

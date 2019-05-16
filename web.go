@@ -523,11 +523,8 @@ func (s *Supervisor) groupOperateEvent(group, api string, w http.ResponseWriter,
 		if !ok {
 			continue
 		}
-		go func() {
-			CatchPanic(func() {
-				proc.Operate(event)
-			})
-		}()
+
+		proc.Operate(event)
 	}
 
 	keys := cluster.slaves.Keys()
