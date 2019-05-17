@@ -240,7 +240,7 @@ func (cluster *Cluster) cmdWebSocketProxy(w http.ResponseWriter, r *http.Request
 	}
 }
 
-func (cluster *Cluster) doSlaveHttpProxy(slave string, w http.ResponseWriter, r *http.Request) (*http.Response, error) {
+func (cluster *Cluster) doSlaveHttpProxy(slave string, w http.ResponseWriter, r *http.Request) ([]byte, *http.Response, error) {
 	slaveUri := strings.Replace(r.RequestURI, "/distributed/"+slave, "", 1)
 	requestUrl := fmt.Sprintf("http://%s%s", slave, slaveUri)
 	log.Infof("proxy :%s %s", r.Method, requestUrl)
@@ -254,22 +254,25 @@ func (cluster *Cluster) doSlaveHttpProxy(slave string, w http.ResponseWriter, r 
 	}
 	cluster.auth(request)
 	resp, err := cluster.client.Do(request)
+
+	defer resp.Body.Close()
+
 	if err != nil {
 		log.Error(err)
+		return nil, nil, err
 	}
-	return resp, err
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Error(err)
+		return nil, nil, err
+	}
+	return body, resp, nil
 }
 
 func (cluster *Cluster) slaveHttpProxy(w http.ResponseWriter, r *http.Request) {
 	slave := mux.Vars(r)["slave"]
-	resp, err := cluster.doSlaveHttpProxy(slave, w, r)
-	if err != nil {
-		return
-	}
-
-	defer resp.Body.Close()
-
-	if body, err := ioutil.ReadAll(resp.Body); err != nil {
+	if body, resp, err := cluster.doSlaveHttpProxy(slave, w, r); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 	} else {
